@@ -7,4 +7,6 @@ translated.csv
 
 # Sensitive files
 .env
+
+# Caches
 .cache_ggshield
