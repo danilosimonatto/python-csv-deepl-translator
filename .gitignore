@@ -1,0 +1,10 @@
+# input/output files
+input.csv
+translated.csv
+
+# project files
+*.code-workspace
+
+# Sensitive files
+.env
+.cache_ggshield
