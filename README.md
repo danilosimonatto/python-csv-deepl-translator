@@ -1,4 +1,4 @@
-# CSV Translation Project
+# Python CSV DeepL tranlator
 
 This project uses the DeepL API to translate specified columns in a CSV file.
 
