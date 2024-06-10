@@ -36,12 +36,14 @@ def translate_csv(input_csv, output_csv, columns_to_translate, target_lang):
 
 
 if __name__ == "__main__":
-    input_csv = "input.csv"
-    output_csv = "translated.csv"
+    input_csv = "data/input.csv"
+    output_csv = "data/translated.csv"
     columns_to_translate = [
         "Name",
         "Short description",
         "Meta: misure_prodotto",
+        "Meta: misure_modello",
+        "Meta: composizione",
     ]  # columns you want to translate
     target_lang = "EN"  # target language code
 
