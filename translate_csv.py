@@ -1,4 +1,4 @@
-import csv
+import pandas as pd
 import logging
 import os
 from dotenv import load_dotenv
@@ -17,60 +17,76 @@ load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
 
+# Dictionary to store translated entries
+translation_dict = {}
+
 
 def translate_text(text, target_language="en"):
+    if pd.isna(text) or text.strip() == "":
+        return text  # Return as is if the cell is empty or NaN
+
+    if text in translation_dict:
+        return translation_dict[text]
+
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
-                "content": f"You are a helpful assistant that translates text to {target_language}.",
+                "content": (
+                    f"You are a translator. Translate the user-provided text to {target_language} "
+                    'but leave any text between double quotes ("...") unchanged. Do not include any explanations or comments.'
+                ),
             },
             {
                 "role": "user",
-                "content": f"Translate the following text to {target_language}: {text}",
+                "content": text,
             },
         ],
-        max_tokens=2000,
-        temperature=0.7,
+        max_completion_tokens=2000,
+        temperature=0.3,
     )
-    return response.choices[0].message.content.strip()
+
+    translated_text = response.choices[0].message.content.strip()
+    translation_dict[text] = translated_text  # Store the translation
+    return translated_text
+
+
+def standardize_product_format(text):
+    # Simple example of standardizing format
+    if pd.isna(text) or text.strip() == "":
+        return text  # Return as is if the cell is empty or NaN
+
+    if "Embroidery" in text and "T-Shirt" in text:
+        try:
+            parts = text.split("With")
+            base = parts[0].strip()
+            details = parts[1].strip()
+            standardized = f"{base} with {details}"
+            return standardized
+        except IndexError:
+            return text
+    return text
 
 
 def translate_csv(
     input_file, output_file, column_names_to_translate, target_language="en"
 ):
-    with open(input_file, mode="r", encoding="utf-8") as infile, open(
-        output_file, mode="w", encoding="utf-8", newline=""
-    ) as outfile:
+    df = pd.read_csv(input_file)
 
-        reader = csv.reader(infile)
-        writer = csv.writer(outfile)
+    logger.info("Reading header row...")
+    columns_to_translate = [column_name for column_name in column_names_to_translate]
+    logger.info(f"Columns to translate: {columns_to_translate}")
 
-        logger.info("Reading header row...")
-        # Read the header row and write it to the output file
-        headers = next(reader)
-        writer.writerow(headers)
+    for column in columns_to_translate:
+        logger.info(f"Translating column {column}...")
+        df[column] = df[column].apply(standardize_product_format)
+        df[column] = df[column].apply(
+            lambda cell: translate_text(cell, target_language)
+        )
 
-        # Get the indices of the columns to translate
-        columns_to_translate = [
-            headers.index(column_name) for column_name in column_names_to_translate
-        ]
-        logger.info(f"Columns to translate: {columns_to_translate}")
-
-        # Translate the specified columns
-        for row_num, row in enumerate(reader, start=1):
-            logger.info(f"Translating row {row_num}...")
-            translated_row = [
-                (
-                    translate_text(cell, target_language)
-                    if index in columns_to_translate
-                    else cell
-                )
-                for index, cell in enumerate(row)
-            ]
-            writer.writerow(translated_row)
-            logger.info(f"Translated row {row_num} completed.")
+    df.to_csv(output_file, index=False)
+    logger.info("Translation process completed.")
 
 
 # Ensure the 'data' folder exists
@@ -81,12 +97,10 @@ if not os.path.exists("data"):
 input_csv_path = os.path.join("data", "input.csv")
 output_csv_path = os.path.join("data", "output.csv")
 
-# Specify the column names you want to translate
 column_names_to_translate = [
-    "Name",
-    "Short description",
+    "Nome",
+    "Breve descrizione",
     "Meta: misure_prodotto",
-    "Meta: misure_modello",
     "Meta: composizione",
 ]
 
